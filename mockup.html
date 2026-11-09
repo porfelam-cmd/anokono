@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>あの道この道 — モックアップ</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: #2c2c2c;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 100vh;
+  padding: 24px 16px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+}
+body::before {
+  content: 'あの道この道 — インタラクティブモックアップ（タップして操作できます）';
+  display: block;
+  color: #aaa;
+  font-size: 12px;
+  margin-bottom: 16px;
+  letter-spacing: 0.04em;
+}
+
+#phone {
+  width: 390px;
+  height: 844px;
+  background: #efe6d0;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 44px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+}
+
+.screen { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* Header */
+.hdr {
+  background: rgba(239,230,208,0.97);
+  padding: 50px 18px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-shrink: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.07);
+}
+.hdr-title { font-size: 20px; font-weight: 700; color: #222; }
+.hbtns { display: flex; gap: 6px; }
+.hbtn {
+  width: 30px; height: 30px; border: none; border-radius: 50%;
+  background: rgba(0,0,0,0.08); font-size: 13px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; color: #555;
+}
+
+/* Bottom Nav */
+#bnav {
+  background: rgba(239,230,208,0.97);
+  border-top: 1px solid rgba(0,0,0,0.1);
+  display: flex; padding: 6px 0 20px;
+  flex-shrink: 0; z-index: 50;
+}
+.ni {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; gap: 2px;
+  cursor: pointer; padding: 4px; border: none; background: none;
+}
+.ni-ic { font-size: 22px; line-height: 1; }
+.ni-lb { font-size: 10px; color: #999; }
+.ni.active .ni-lb { color: #e67e22; }
+.ni-add {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; border: none; background: none;
+}
+.ni-circle {
+  width: 54px; height: 54px; background: #e67e22;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 28px; color: white; margin-top: -20px;
+  box-shadow: 0 4px 16px rgba(230,126,34,0.45);
+}
+
+/* Toast */
+#toast {
+  position: absolute; bottom: 90px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: rgba(0,0,0,0.78); color: white;
+  padding: 9px 18px; border-radius: 20px;
+  font-size: 12px; white-space: nowrap;
+  opacity: 0; transition: all 0.25s;
+  pointer-events: none; z-index: 300;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Help overlay */
+#help-ov {
+  display: none; position: absolute; inset: 0;
+  background: rgba(0,0,0,0.5); z-index: 200;
+  align-items: flex-end;
+}
+#help-ov.show { display: flex; }
+.help-sheet {
+  background: white; width: 100%; border-radius: 20px 20px 0 0;
+  padding: 16px 20px 36px; max-height: 65%; overflow-y: auto;
+}
+.help-title { font-weight: 700; font-size: 16px; margin-bottom: 10px; }
+.help-item { font-size: 12px; color: #444; margin-bottom: 7px; line-height: 1.6; padding-left: 12px; position: relative; }
+.help-item::before { content: '•'; color: #e67e22; font-weight: 700; position: absolute; left: 0; }
+
+/* ============================================================
+   MAP
+   ============================================================ */
+#map-wrap {
+  flex: 1; position: relative; overflow: hidden; background: #d7e3e8;
+}
+#jmap { width: 100%; height: 100%; }
+.pref { cursor: pointer; transition: opacity 0.12s; paint-order: stroke fill; stroke-width: var(--pref-sw, 3); stroke: white; }
+.pref:hover { opacity: 0.72; }
+
+.map-legend {
+  position: absolute; bottom: 14px; left: 10px;
+  background: rgba(255,255,255,0.93); border-radius: 10px;
+  padding: 8px 12px; font-size: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.leg { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.leg:last-child { margin-bottom: 0; }
+.legc { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
+.map-ctl {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.mcbtn {
+  width: 32px; height: 32px; background: white; border: none; border-radius: 7px;
+  font-size: 17px; cursor: pointer; color: #444;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Prefecture panel */
+#ppanel {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: white; border-radius: 20px 20px 0 0;
+  padding: 14px 20px 22px;
+  transform: translateY(100%);
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  box-shadow: 0 -4px 24px rgba(0,0,0,0.14); z-index: 10;
+}
+#ppanel.open { transform: translateY(0); }
+.pp-handle { width: 36px; height: 4px; background: #ddd; border-radius: 2px; margin: 0 auto 12px; }
+#pp-name { font-size: 18px; font-weight: 700; margin-bottom: 3px; }
+.pp-sub { font-size: 12px; color: #aaa; margin-bottom: 10px; }
+.state-row { display: flex; gap: 6px; }
+.sbtn {
+  flex: 1; padding: 8px 4px;
+  border: 2px solid #e0e0e0; border-radius: 10px; background: white;
+  font-size: 11px; font-weight: 600; cursor: pointer; color: #777;
+  transition: all 0.14s;
+}
+.sbtn.active { border-color: #e67e22; background: #fff5ed; color: #e67e22; }
+
+/* ============================================================
+   RECORDS
+   ============================================================ */
+.rec-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+.cal-wrap {
+  background: white; padding: 12px 16px 10px;
+  border-bottom: 1px solid #eee; flex-shrink: 0;
+}
+.cal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+.cal-nav { font-size: 22px; color: #bbb; border: none; background: none; cursor: pointer; }
+.cal-mo { font-weight: 700; font-size: 15px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); text-align: center; }
+.cdn { font-size: 10px; color: #bbb; padding: 3px 0; }
+.cd {
+  font-size: 12px; padding: 6px 0; border-radius: 50%;
+  cursor: pointer; color: #333; position: relative;
+}
+.cd.has::after {
+  content:''; width: 4px; height: 4px; background: #e67e22; border-radius: 50%;
+  position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+}
+.cd.sel { background: #e67e22; color: white; }
+.cd.sel::after { background: white; }
+.cd.today { font-weight: 800; }
+.cd.empty { color: transparent; pointer-events: none; }
+
+.trips-wrap { flex: 1; padding: 12px 14px 20px; overflow-y: auto; }
+
+.tcard {
+  background: white; border-radius: 14px;
+  padding: 12px 14px; margin-bottom: 12px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+}
+.tcard-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.tcard-date { font-size: 12px; color: #888; }
+.tcard-del { font-size: 11px; color: #e74c3c; cursor: pointer; border: none; background: none; }
+
+.stop {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 7px 0; border-bottom: 1px solid #f2f2f2;
+}
+.stop:last-of-type { border-bottom: none; }
+.sthumb {
+  width: 46px; height: 46px; border-radius: 8px;
+  flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 22px;
+}
+.sinfo { flex: 1; min-width: 0; }
+.sname { font-weight: 600; font-size: 13px; }
+.smeta { font-size: 11px; color: #aaa; margin-top: 2px; }
+.abadge {
+  font-size: 9px; background: #e8f4fd; color: #2980b9;
+  padding: 1px 5px; border-radius: 3px; margin-left: 4px; font-weight: 700;
+}
+
+.add-day-btn {
+  width: 100%; padding: 9px; margin-top: 8px;
+  border: 1.5px dashed #ddd; border-radius: 10px;
+  background: none; color: #bbb; font-size: 12px; cursor: pointer;
+}
+.add-day-btn:hover { border-color: #e67e22; color: #e67e22; }
+
+/* ============================================================
+   ADD PHOTO
+   ============================================================ */
+.add-body { flex: 1; overflow-y: auto; padding: 14px 14px 24px; }
+
+.dropzone {
+  border: 2px dashed #ccc; border-radius: 16px;
+  padding: 28px 20px; text-align: center;
+  background: white; cursor: pointer; margin-bottom: 16px;
+}
+.dropzone:hover { border-color: #e67e22; }
+.dz-ic { font-size: 36px; margin-bottom: 6px; }
+.dz-txt { font-size: 15px; color: #888; }
+.dz-sub { font-size: 11px; color: #bbb; margin-top: 3px; }
+
+.pcards { display: flex; flex-direction: column; gap: 14px; }
+
+.pcard {
+  background: white; border-radius: 16px;
+  overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+.pcard-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 11px 13px 7px; font-size: 12px; font-weight: 600; color: #555;
+}
+.pdismiss { border: none; background: none; font-size: 20px; color: #ccc; cursor: pointer; }
+
+.pthumb-wrap { padding: 0 13px 10px; position: relative; }
+.pthumb {
+  width: 100%; height: 150px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 48px;
+}
+.gps-badge {
+  position: absolute; top: 7px; left: 20px;
+  background: rgba(0,0,0,0.6); color: white;
+  font-size: 10px; padding: 3px 8px; border-radius: 10px;
+}
+
+.pfields { padding: 0 13px 13px; }
+.frow { margin-bottom: 9px; }
+.flabel { font-size: 10px; color: #bbb; margin-bottom: 3px; font-weight: 700; letter-spacing: 0.03em; }
+.fval { font-size: 13px; color: #333; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.auto-b { font-size: 9px; background: #e8f4fd; color: #2980b9; padding: 2px 6px; border-radius: 4px; font-weight: 700; }
+.corr-h { font-size: 10px; color: #bbb; }
+
+.cands { margin-bottom: 9px; }
+.cands-lb { font-size: 10px; color: #bbb; margin-bottom: 5px; font-weight: 700; letter-spacing: 0.03em; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  padding: 5px 10px; border-radius: 20px;
+  border: 1.5px solid #e0e0e0; font-size: 11px;
+  cursor: pointer; background: white; color: #555; transition: all 0.13s;
+}
+.chip.poi { border-color: #aad4f0; color: #2980b9; }
+.chip.addr { border-color: #c8e6c9; color: #27ae60; }
+.chip.selected { background: #e67e22; color: white; border-color: #e67e22; }
+.chip.poi.selected { background: #2980b9; border-color: #2980b9; color: white; }
+.chip.addr.selected { background: #27ae60; border-color: #27ae60; color: white; }
+
+.place-inp {
+  width: 100%; padding: 9px 11px;
+  border: 1.5px solid #eee; border-radius: 10px;
+  font-size: 13px; background: #fafafa; outline: none; font-family: inherit;
+}
+.place-inp:focus { border-color: #e67e22; background: white; }
+
+.save-btn {
+  width: 100%; padding: 15px; background: #e67e22; color: white;
+  border: none; border-radius: 14px; font-size: 16px; font-weight: 700;
+  cursor: pointer; margin-top: 10px;
+}
+
+/* ============================================================
+   DESTINATIONS
+   ============================================================ */
+.dest-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+#dmap-wrap { height: 230px; flex-shrink: 0; background: #d7e3e8; overflow: hidden; }
+#dmap { width: 100%; height: 100%; }
+
+.dest-scroll { flex: 1; overflow-y: auto; }
+
+.dest-sum {
+  background: white; padding: 10px 16px;
+  border-bottom: 1px solid #eee; font-size: 12px; color: #777;
+}
+.dest-sum strong { color: #333; }
+
+.dsec { font-size: 14px; font-weight: 700; padding: 12px 16px 6px; color: #333; }
+
+.dcards { padding: 0 14px 8px; }
+.dcard {
+  background: white; border-radius: 14px;
+  display: flex; overflow: hidden; margin-bottom: 10px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.08);
+}
+.dphoto {
+  width: 90px; height: 72px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 28px;
+}
+.dinfo { padding: 9px 11px; flex: 1; }
+.dname { font-weight: 700; font-size: 13px; }
+.dmeta { font-size: 10px; color: #aaa; margin-top: 2px; }
+.dbadges { display: flex; gap: 5px; margin-top: 5px; }
+.badge { font-size: 10px; padding: 2px 7px; border-radius: 10px; font-weight: 600; }
+.b-day { background: #e3f2fd; color: #1976d2; }
+.b-stay { background: #fff3e0; color: #e67e22; }
+
+.lrcard {
+  background: white; border-radius: 14px;
+  padding: 11px 13px; margin: 0 14px 10px;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.08);
+}
+.lrh { display: flex; justify-content: space-between; align-items: flex-start; }
+.lrname { font-weight: 700; font-size: 13px; }
+.lrmeta { font-size: 10px; color: #aaa; margin-top: 2px; }
+.lock-priv { font-size: 10px; color: #bbb; }
+.lock-pub { font-size: 10px; color: #27ae60; }
+.lrcomment { font-size: 11px; color: #666; font-style: italic; margin-top: 6px; line-height: 1.5; }
+.want-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 8px; padding: 5px 12px;
+  border: 1.5px solid #f5d78e; border-radius: 20px;
+  background: #fef9e7; color: #d4860a; font-size: 11px; font-weight: 700; cursor: pointer;
+}
+.want-btn:active { background: #fdf0c0; }
+
+.add-fab {
+  padding: 10px 14px 4px;
+  background: linear-gradient(to top, #efe6d0 60%, transparent);
+  position: sticky; bottom: 0;
+}
+.fab-btn {
+  width: 100%; padding: 12px; background: #e67e22; color: white;
+  border: none; border-radius: 14px; font-size: 14px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(230,126,34,0.35);
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+</head>
+<body>
+<div id="phone">
+
+<!-- ===================== MAP ===================== -->
+<div id="screen-map" class="screen active">
+  <div class="hdr">
+    <div class="hdr-title">あの道この道</div>
+    <div class="hbtns">
+      <button class="hbtn" onclick="showHelp('map')">?</button>
+      <button class="hbtn" onclick="showToast('設定画面（実装予定）')">⚙</button>
+    </div>
+  </div>
+  <div id="map-wrap">
+    <svg id="jmap" viewBox="0 0 390 600" xmlns="http://www.w3.org/2000/svg">
+      <rect id="jmap-bg" width="390" height="600" fill="#d7e3e8"/>
+      <g id="jmap-g"></g>
+    </svg>
+
+    <!-- Legend -->
+    <div class="map-legend">
+      <div class="leg"><div class="legc" style="background:#e67e22"></div>最近の旅先</div>
+      <div class="leg"><div class="legc" style="background:#1e7a34"></div>宿泊</div>
+      <div class="leg"><div class="legc" style="background:#4caf6d"></div>訪問</div>
+      <div class="leg"><div class="legc" style="background:#bfe3c8"></div>通過</div>
+      <div class="leg"><div class="legc" style="background:#efe6d0;border:1px solid #ccc"></div>未訪問</div>
+    </div>
+
+    <!-- Zoom controls -->
+    <div class="map-ctl">
+      <button class="mcbtn" id="zoom-in">＋</button>
+      <button class="mcbtn" id="zoom-out">－</button>
+      <button class="mcbtn" style="font-size:10px" id="zoom-reset">全体</button>
+    </div>
+
+    <!-- Prefecture panel -->
+    <div id="ppanel">
+      <div class="pp-handle"></div>
+      <div id="pp-name">長野県</div>
+      <div class="pp-sub">状態を選んで変更できます</div>
+      <div class="state-row">
+        <button class="sbtn" data-s="unvisited">未訪問</button>
+        <button class="sbtn" data-s="through">通過</button>
+        <button class="sbtn" data-s="visited">訪問</button>
+        <button class="sbtn" data-s="stayed">宿泊</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== RECORDS ===================== -->
+<div id="screen-records" class="screen">
+  <div class="hdr">
+    <div class="hdr-title">記録</div>
+    <div class="hbtns">
+      <button class="hbtn" style="font-size:10px" onclick="showToast('JSON書き出し機能')">JSON</button>
+      <button class="hbtn" onclick="showHelp('records')">?</button>
+      <button class="hbtn" onclick="showToast('設定画面')">⚙</button>
+    </div>
+  </div>
+  <div class="rec-body">
+    <div class="cal-wrap">
+      <div class="cal-head">
+        <button class="cal-nav">‹</button>
+        <div class="cal-mo">2026年11月</div>
+        <button class="cal-nav">›</button>
+      </div>
+      <div class="cal-grid">
+        <div class="cdn">日</div><div class="cdn">月</div><div class="cdn">火</div>
+        <div class="cdn">水</div><div class="cdn">木</div><div class="cdn">金</div><div class="cdn">土</div>
+        <div class="cd empty"></div><div class="cd empty"></div><div class="cd empty"></div>
+        <div class="cd empty"></div><div class="cd empty"></div><div class="cd empty"></div>
+        <div class="cd has">1</div>
+        <div class="cd has">2</div><div class="cd">3</div><div class="cd">4</div>
+        <div class="cd">5</div><div class="cd">6</div><div class="cd">7</div>
+        <div class="cd has sel">8</div>
+        <div class="cd today">9</div><div class="cd">10</div><div class="cd">11</div>
+        <div class="cd">12</div><div class="cd">13</div><div class="cd">14</div><div class="cd">15</div>
+        <div class="cd">16</div><div class="cd">17</div><div class="cd">18</div>
+        <div class="cd">19</div><div class="cd">20</div><div class="cd">21</div><div class="cd">22</div>
+        <div class="cd">23</div><div class="cd">24</div><div class="cd">25</div>
+        <div class="cd">26</div><div class="cd">27</div><div class="cd">28</div><div class="cd">29</div>
+        <div class="cd">30</div>
+      </div>
+    </div>
+
+    <div class="trips-wrap">
+      <div class="tcard">
+        <div class="tcard-head">
+          <div class="tcard-date">📅 2026年11月8日（日）</div>
+          <button class="tcard-del" onclick="showToast('削除の確認ダイアログが開きます')">この日を削除</button>
+        </div>
+        <div class="stop">
+          <div class="sthumb" style="background:linear-gradient(135deg,#667eea,#764ba2)">🏔</div>
+          <div class="sinfo">
+            <div class="sname">ビーナスライン<span class="abadge">自動</span></div>
+            <div class="smeta">長野県 · 07:45</div>
+          </div>
+        </div>
+        <div class="stop">
+          <div class="sthumb" style="background:linear-gradient(135deg,#56ab2f,#a8e063)">⛩</div>
+          <div class="sinfo">
+            <div class="sname">諏訪大社</div>
+            <div class="smeta">長野県 · 09:38</div>
+          </div>
+        </div>
+        <div class="stop">
+          <div class="sthumb" style="background:linear-gradient(135deg,#f093fb,#f5576c)">🌅</div>
+          <div class="sinfo">
+            <div class="sname">霧ヶ峰 富士見台<span class="abadge">自動</span></div>
+            <div class="smeta">長野県 · 11:12</div>
+          </div>
+        </div>
+        <button class="add-day-btn" onclick="showToast('この日の旅に写真を追加')">＋ この日に写真を追加</button>
+      </div>
+
+      <div class="tcard">
+        <div class="tcard-head">
+          <div class="tcard-date">📅 2026年11月2日（日）</div>
+          <button class="tcard-del" onclick="showToast('削除の確認ダイアログが開きます')">この日を削除</button>
+        </div>
+        <div class="stop">
+          <div class="sthumb" style="background:linear-gradient(135deg,#2980b9,#6dd5fa)">🌊</div>
+          <div class="sinfo">
+            <div class="sname">浜名湖SA<span class="abadge">自動</span></div>
+            <div class="smeta">静岡県 · 10:22</div>
+          </div>
+        </div>
+        <button class="add-day-btn" onclick="showToast('この日の旅に写真を追加')">＋ この日に写真を追加</button>
+      </div>
+
+      <div class="tcard">
+        <div class="tcard-head">
+          <div class="tcard-date">📅 2026年11月1日（土）</div>
+          <button class="tcard-del" onclick="showToast('削除の確認ダイアログが開きます')">この日を削除</button>
+        </div>
+        <div class="stop">
+          <div class="sthumb" style="background:linear-gradient(135deg,#f7971e,#ffd200)">🏯</div>
+          <div class="sinfo">
+            <div class="sname">犬山城<span class="abadge">自動</span></div>
+            <div class="smeta">愛知県 · 13:30</div>
+          </div>
+        </div>
+        <button class="add-day-btn" onclick="showToast('この日の旅に写真を追加')">＋ この日に写真を追加</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== ADD PHOTO ===================== -->
+<div id="screen-add" class="screen">
+  <div class="hdr">
+    <div class="hdr-title">写真を追加</div>
+    <div class="hbtns">
+      <button class="hbtn" onclick="showHelp('add')">?</button>
+    </div>
+  </div>
+  <div class="add-body">
+    <div class="dropzone" onclick="showToast('写真ライブラリが開きます（複数選択OK）')">
+      <div class="dz-ic">📷</div>
+      <div class="dz-txt">写真を選ぶ（複数OK）</div>
+      <div class="dz-sub">JPEGまたはHEIC · EXIFから位置と日時を自動取得</div>
+    </div>
+
+    <div class="pcards">
+      <div class="pcard">
+        <div class="pcard-head">
+          <span>1枚目</span>
+          <button class="pdismiss" onclick="this.closest('.pcard').remove()">×</button>
+        </div>
+        <div class="pthumb-wrap">
+          <div class="pthumb" style="background:linear-gradient(135deg,#667eea,#764ba2)">🏔</div>
+          <div class="gps-badge">📍 位置情報あり: 36.09°N, 138.17°E</div>
+        </div>
+        <div class="pfields">
+          <div class="frow">
+            <div class="flabel">撮影日時</div>
+            <div class="fval">2026年11月8日 07:46 <span class="auto-b">自動取得</span></div>
+          </div>
+          <div class="frow">
+            <div class="flabel">都道府県</div>
+            <div class="fval">長野県 <span class="auto-b">自動判定</span> <span class="corr-h">（違う場合は変更できます）</span></div>
+          </div>
+          <div class="cands">
+            <div class="cands-lb">場所名の候補（タップして選ぶ）</div>
+            <div class="chips" id="chips1">
+              <button class="chip poi selected" data-place="ビーナスライン" onclick="selectChip(this,'inp1')">🏔 ビーナスライン 約0.3km</button>
+              <button class="chip poi" data-place="車山高原" onclick="selectChip(this,'inp1')">⛷ 車山高原 約1.2km</button>
+              <button class="chip poi" data-place="霧ヶ峰" onclick="selectChip(this,'inp1')">🌿 霧ヶ峰 約2.8km</button>
+              <button class="chip addr" data-place="茅野市北山" onclick="selectChip(this,'inp1')">📍 茅野市北山</button>
+              <button class="chip" style="border-color:#aaa;color:#888" data-place="" onclick="selectChip(this,'inp1')">✏️ 手入力</button>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="flabel">場所名<span style="color:#bbb;font-weight:400">（空でもOK）</span></div>
+            <input class="place-inp" id="inp1" type="text" value="ビーナスライン" placeholder="場所名を入力、または空欄のまま保存"/>
+          </div>
+        </div>
+      </div>
+
+      <div class="pcard">
+        <div class="pcard-head">
+          <span>2枚目</span>
+          <button class="pdismiss" onclick="this.closest('.pcard').remove()">×</button>
+        </div>
+        <div class="pthumb-wrap">
+          <div class="pthumb" style="background:linear-gradient(135deg,#56ab2f,#a8e063)">⛩</div>
+          <div class="gps-badge">📍 位置情報あり: 36.04°N, 138.08°E</div>
+        </div>
+        <div class="pfields">
+          <div class="frow">
+            <div class="flabel">撮影日時</div>
+            <div class="fval">2026年11月8日 09:38 <span class="auto-b">自動取得</span></div>
+          </div>
+          <div class="frow">
+            <div class="flabel">都道府県</div>
+            <div class="fval">長野県 <span class="auto-b">自動判定</span></div>
+          </div>
+          <div class="cands">
+            <div class="cands-lb">場所名の候補</div>
+            <div class="chips" id="chips2">
+              <button class="chip poi selected" data-place="諏訪大社" onclick="selectChip(this,'inp2')">⛩ 諏訪大社 約0.1km</button>
+              <button class="chip poi" data-place="諏訪湖" onclick="selectChip(this,'inp2')">🌊 諏訪湖 約0.8km</button>
+              <button class="chip addr" data-place="諏訪市中洲" onclick="selectChip(this,'inp2')">📍 諏訪市中洲</button>
+              <button class="chip" style="border-color:#aaa;color:#888" data-place="" onclick="selectChip(this,'inp2')">✏️ 手入力</button>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="flabel">場所名</div>
+            <input class="place-inp" id="inp2" type="text" value="諏訪大社" placeholder="場所名を入力、または空欄のまま保存"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="save-btn" onclick="showToast('保存しました！長野県を「訪問済み」にしました')">保存する</button>
+  </div>
+</div>
+
+<!-- ===================== DESTINATIONS ===================== -->
+<div id="screen-dest" class="screen">
+  <div class="hdr">
+    <div class="hdr-title">行き先</div>
+    <div class="hbtns">
+      <button class="hbtn" onclick="showHelp('dest')">?</button>
+      <button class="hbtn" onclick="showToast('設定画面')">⚙</button>
+    </div>
+  </div>
+  <div class="dest-body">
+    <div id="dmap-wrap">
+      <svg id="dmap" viewBox="0 0 390 230" xmlns="http://www.w3.org/2000/svg">
+        <rect id="dmap-bg" width="390" height="230" fill="#d7e3e8"/>
+        <g id="dmap-prefs"></g>
+        <g id="dmap-rings"></g>
+        <g id="dmap-pins"></g>
+      </svg>
+    </div>
+
+    <div class="dest-scroll">
+      <div class="dest-sum">
+        未訪問 <strong>24県</strong>　日帰り圏（150km以内）<strong>7スポット</strong>
+        　<span style="color:#e67e22;font-weight:700">●</span> 日帰り境界 150km
+      </div>
+
+      <div class="dsec">おすすめ候補</div>
+      <div class="dcards">
+        <div class="dcard">
+          <div class="dphoto" style="background:linear-gradient(135deg,#2980b9,#6dd5fa)">🌊</div>
+          <div class="dinfo">
+            <div class="dname">パールロード</div>
+            <div class="dmeta">三重県 · 自宅から約80km</div>
+            <div class="dbadges"><span class="badge b-day">日帰り圏</span></div>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="dphoto" style="background:linear-gradient(135deg,#667eea,#764ba2)">🏔</div>
+          <div class="dinfo">
+            <div class="dname">ビーナスライン</div>
+            <div class="dmeta">長野県 · 自宅から約160km</div>
+            <div class="dbadges"><span class="badge b-stay">宿泊向き</span></div>
+          </div>
+        </div>
+        <div class="dcard">
+          <div class="dphoto" style="background:linear-gradient(135deg,#43e97b,#38f9d7)">🌿</div>
+          <div class="dinfo">
+            <div class="dname">UFOライン（瓶ヶ森線）</div>
+            <div class="dmeta">高知・愛媛 · 自宅から約330km</div>
+            <div class="dbadges"><span class="badge b-stay">宿泊向き</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dsec">🗺 ローカル名道</div>
+
+      <div class="lrcard">
+        <div class="lrh">
+          <div>
+            <div class="lrname">設楽の林道（通称: ジムカナ峠）</div>
+            <div class="lrmeta">愛知県 · 自宅から約45km</div>
+          </div>
+          <span class="lock-priv">🔒 非公開</span>
+        </div>
+        <div class="lrcomment">「舗装が綺麗で地元ライダーしか知らない。秋の紅葉が最高。交通量ほぼゼロ」</div>
+        <button class="want-btn" onclick="showToast('走りたい！3→4人になりました')">⭐ 走りたい！ 3人</button>
+      </div>
+
+      <div class="lrcard">
+        <div class="lrh">
+          <div>
+            <div class="lrname">稲武の農道（通称: わさび農道）</div>
+            <div class="lrmeta">愛知県 · 自宅から約55km</div>
+          </div>
+          <span class="lock-pub">🌐 公開中</span>
+        </div>
+        <div class="lrcomment">「地元農家しか使わない道。路面最高、眺めも良い。春は山桜が咲く」</div>
+        <button class="want-btn" onclick="showToast('走りたい！12→13人になりました')">⭐ 走りたい！ 12人</button>
+      </div>
+
+      <div class="add-fab">
+        <button class="fab-btn" onclick="showToast('地名検索または地図タップで候補を追加')">＋ 候補を追加</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== BOTTOM NAV ===================== -->
+<nav id="bnav">
+  <button class="ni active" onclick="showScreen('map',this)">
+    <span class="ni-ic">🗾</span>
+    <span class="ni-lb">マップ</span>
+  </button>
+  <button class="ni" onclick="showScreen('records',this)">
+    <span class="ni-ic">📋</span>
+    <span class="ni-lb">記録</span>
+  </button>
+  <button class="ni-add" onclick="showScreen('add',null)">
+    <div class="ni-circle">＋</div>
+  </button>
+  <button class="ni" onclick="showScreen('dest',this)">
+    <span class="ni-ic">🧭</span>
+    <span class="ni-lb">行き先</span>
+  </button>
+</nav>
+
+<!-- HELP OVERLAY -->
+<div id="help-ov" onclick="this.classList.remove('show')">
+  <div class="help-sheet" onclick="event.stopPropagation()">
+    <div class="help-title" id="help-title">ヘルプ</div>
+    <div id="help-body"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+</div><!-- /phone -->
+
+<script>
+// Screen switching
+function showScreen(name, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.querySelectorAll('.ni').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById('ppanel').classList.remove('open');
+}
+
+// Toast
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+// Prefecture tap
+const stateColors = {
+  unvisited: '#efe6d0', through: '#bfe3c8',
+  visited: '#4caf6d', stayed: '#1e7a34', recent: '#e67e22'
+};
+let currentPref = null;
+
+// Japanese prefecture names by JIS code
+const prefJaNames = {
+  1:'北海道',2:'青森県',3:'岩手県',4:'宮城県',5:'秋田県',
+  6:'山形県',7:'福島県',8:'茨城県',9:'栃木県',10:'群馬県',
+  11:'埼玉県',12:'千葉県',13:'東京都',14:'神奈川県',15:'新潟県',
+  16:'富山県',17:'石川県',18:'福井県',19:'山梨県',20:'長野県',
+  21:'岐阜県',22:'静岡県',23:'愛知県',24:'三重県',25:'滋賀県',
+  26:'京都府',27:'大阪府',28:'兵庫県',29:'奈良県',30:'和歌山県',
+  31:'鳥取県',32:'島根県',33:'岡山県',34:'広島県',35:'山口県',
+  36:'徳島県',37:'香川県',38:'愛媛県',39:'高知県',40:'福岡県',
+  41:'佐賀県',42:'長崎県',43:'熊本県',44:'大分県',45:'宮崎県',
+  46:'鹿児島県',47:'沖縄県'
+};
+
+// Initial visited states
+const prefInitialStates = {
+  1:'through', 4:'visited', 5:'visited', 14:'visited',
+  20:'recent', 22:'visited', 23:'visited', 28:'visited',
+  33:'visited', 39:'through', 40:'visited'
+};
+
+function openPrefPanel(el) {
+  currentPref = el;
+  document.getElementById('pp-name').textContent = el.dataset.name || '不明';
+  const s = el.dataset.state || 'unvisited';
+  document.querySelectorAll('.sbtn').forEach(b =>
+    b.classList.toggle('active', b.dataset.s === s || (s === 'recent' && b.dataset.s === 'visited'))
+  );
+  document.getElementById('ppanel').classList.add('open');
+}
+
+// D3 map initialization
+async function initMaps() {
+  let features;
+  try {
+    const topo = await fetch(
+      'https://cdn.jsdelivr.net/gh/dataofjapan/land@master/japan.topojson'
+    ).then(r => r.json());
+    // Handle both possible object names
+    const obj = topo.objects.japan || topo.objects.prefectures || Object.values(topo.objects)[0];
+    features = topojson.feature(topo, obj).features;
+  } catch(e) {
+    ['jmap','dmap'].forEach(id => {
+      const svg = document.getElementById(id);
+      svg.insertAdjacentHTML('beforeend',
+        '<text x="195" y="50%" font-size="11" fill="#999" text-anchor="middle" dominant-baseline="middle">地図データを読み込めませんでした（要ネット接続）</text>');
+    });
+    return;
+  }
+
+  // ── Main map ──────────────────────────────────────────────
+  const jProj = d3.geoMercator()
+    .fitExtent([[8, 8], [382, 592]], {type:'FeatureCollection', features});
+  const jPath = d3.geoPath().projection(jProj);
+
+  d3.select('#jmap-g').selectAll('path')
+    .data(features)
+    .join('path')
+    .attr('class','pref')
+    .attr('id', d => `p${String(d.id || d.properties.id).padStart(2,'0')}`)
+    .attr('data-name', d => d.properties.nam_ja || prefJaNames[d.id || d.properties.id] || '')
+    .attr('data-state', d => prefInitialStates[d.id || d.properties.id] || 'unvisited')
+    .attr('d', jPath)
+    .attr('fill', d => stateColors[prefInitialStates[d.id || d.properties.id] || 'unvisited'])
+    .on('click', function(event) {
+      event.stopPropagation();
+      openPrefPanel(this);
+    });
+
+  // ── Dest map ───────────────────────────────────────────────
+  const dProj = d3.geoMercator()
+    .fitExtent([[4, 4], [386, 226]], {type:'FeatureCollection', features});
+  const dPath = d3.geoPath().projection(dProj);
+
+  d3.select('#dmap-prefs').selectAll('path')
+    .data(features)
+    .join('path')
+    .attr('d', dPath)
+    .attr('fill', d => stateColors[prefInitialStates[d.id || d.properties.id] || 'unvisited'])
+    .attr('stroke','white').attr('stroke-width','0.6')
+    .attr('paint-order','stroke fill');
+
+  // Distance rings centered on Nagoya (136.9066°E, 35.1815°N)
+  const nagoya = dProj([136.9066, 35.1815]);
+  if (nagoya) {
+    const p2 = dProj([137.9066, 35.1815]);
+    const pxPerKm = Math.abs(p2[0] - nagoya[0]) / 91.3;
+    const ringsG = d3.select('#dmap-rings');
+
+    [[100,'#888',0.8,true],[150,'#e67e22',2,false],[200,'#888',0.8,true],[400,'#bbb',0.6,true]]
+      .forEach(([km,clr,w,dash]) => {
+        const r = km * pxPerKm;
+        ringsG.append('circle')
+          .attr('cx',nagoya[0]).attr('cy',nagoya[1]).attr('r',r)
+          .attr('fill','none').attr('stroke',clr).attr('stroke-width',w)
+          .attr('stroke-dasharray',dash?'2,2':'none').attr('opacity',0.65);
+        ringsG.append('text')
+          .attr('x',nagoya[0]+r+2).attr('y',nagoya[1]-2)
+          .attr('font-size','6').attr('fill',clr)
+          .attr('font-weight',km===150?'700':'normal').text(km+'km');
+      });
+
+    // Home marker
+    ringsG.append('circle').attr('cx',nagoya[0]).attr('cy',nagoya[1]).attr('r',4)
+      .attr('fill','white').attr('stroke','#e67e22').attr('stroke-width',2);
+    ringsG.append('text').attr('x',nagoya[0]+6).attr('y',nagoya[1]-1)
+      .attr('font-size','7').attr('fill','#e67e22').attr('font-weight','700').text('自宅');
+    ringsG.append('text').attr('x',nagoya[0]+6).attr('y',nagoya[1]+7)
+      .attr('font-size','6').attr('fill','#aaa').text('名古屋');
+  }
+
+  // Destination pins
+  const pinsG = d3.select('#dmap-pins');
+  [[138.366,36.094,'ビーナスライン','#e67e22',true],
+   [133.300,33.800,'UFOライン','#888',false],
+   [136.700,34.500,'伊勢志摩','#888',false],
+   [136.900,37.500,'能登','#888',false]
+  ].forEach(([lng,lat,name,clr,bold]) => {
+    const xy = dProj([lng,lat]);
+    if (!xy) return;
+    pinsG.append('circle').attr('cx',xy[0]).attr('cy',xy[1]).attr('r',4)
+      .attr('fill',clr).attr('stroke','white').attr('stroke-width',1.5);
+    pinsG.append('text').attr('x',xy[0]).attr('y',xy[1]-6)
+      .attr('font-size','6').attr('fill',clr)
+      .attr('text-anchor','middle').attr('font-weight',bold?'700':'normal').text(name);
+  });
+}
+
+initMaps();
+
+document.getElementById('map-wrap').addEventListener('click', e => {
+  if (e.target === document.getElementById('map-wrap') || e.target.tagName === 'rect')
+    document.getElementById('ppanel').classList.remove('open');
+});
+
+document.querySelectorAll('.sbtn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.sbtn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const s = this.dataset.s;
+    if (currentPref) {
+      currentPref.dataset.state = s;
+      currentPref.setAttribute('fill', stateColors[s]);
+      const labels = {unvisited:'未訪問',through:'通過',visited:'訪問',stayed:'宿泊'};
+      showToast((currentPref.dataset.name || '') + ' → ' + labels[s]);
+    }
+    setTimeout(() => document.getElementById('ppanel').classList.remove('open'), 500);
+  });
+});
+
+// Zoom
+let scale = 1;
+const mapSvg = document.getElementById('jmap');
+function applyZoom() {
+  mapSvg.style.transform = `scale(${scale})`;
+  mapSvg.style.transformOrigin = 'center center';
+  mapSvg.style.transition = 'transform 0.2s ease';
+  mapSvg.style.setProperty('--pref-sw', Math.max(0.4, 3 / scale));
+}
+document.getElementById('zoom-in').addEventListener('click', () => { scale = Math.min(scale * 1.4, 6); applyZoom(); });
+document.getElementById('zoom-out').addEventListener('click', () => { scale = Math.max(scale / 1.4, 1); applyZoom(); });
+document.getElementById('zoom-reset').addEventListener('click', () => { scale = 1; applyZoom(); });
+
+// Chip selection
+function selectChip(chip, inputId) {
+  chip.closest('.chips').querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+  chip.classList.add('selected');
+  const inp = document.getElementById(inputId);
+  if (!chip.dataset.place) { inp.value = ''; inp.focus(); }
+  else inp.value = chip.dataset.place;
+}
+
+// Help content
+const helpData = {
+  map: {
+    title: 'マップの使い方',
+    items: [
+      '県をタップすると状態（未訪問・通過・訪問・宿泊）を変更できます',
+      'オレンジ色の県が「最近の旅先」（直近の旅で訪れた県）です',
+      '＋／－ボタンまたはピンチで拡大・縮小（最大約6倍）',
+      '「全体」ボタンで全国表示に戻ります',
+    ]
+  },
+  records: {
+    title: '記録の使い方',
+    items: [
+      'カレンダーの●印のある日に記録があります',
+      '「＋ この日に写真を追加」で既存の旅に写真を追加できます',
+      '立ち寄り先は撮影時刻の昇順で自動で並びます',
+      'JSONボタンで記録をバックアップとして書き出せます',
+    ]
+  },
+  add: {
+    title: '写真を追加 — 使い方',
+    items: [
+      'JPEGまたはHEICを複数枚まとめて取り込めます',
+      'EXIFから撮影日時・位置・県を自動で読み取ります',
+      '候補チップをタップして場所名を選べます（最大4件＋住所＋手入力）',
+      '場所名は空欄のまま保存OK（「○○県の写真」として記録されます）',
+      '候補取得に失敗した場合は「もう一度調べる」ボタンが出ます',
+    ]
+  },
+  dest: {
+    title: '行き先の使い方',
+    items: [
+      '地図の同心円は自宅（名古屋）からの距離の目安です',
+      'オレンジの太い輪が「日帰り境界」（150km）です',
+      'ピンをタップすると名前・距離・日帰り／宿泊向きが表示されます',
+      '「＋ 候補を追加」で地名検索または地図タップで追加できます',
+      'ローカル名道は地元ライダーが投稿した非公式の道です',
+      '「走りたい！」は共感を示すボタンです（ランキングではありません）',
+    ]
+  }
+};
+
+function showHelp(page) {
+  const h = helpData[page];
+  document.getElementById('help-title').textContent = h.title;
+  document.getElementById('help-body').innerHTML =
+    h.items.map(i => `<div class="help-item">${i}</div>`).join('');
+  document.getElementById('help-ov').classList.add('show');
+}
+</script>
+</body>
+</html>
